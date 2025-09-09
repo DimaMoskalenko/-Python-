@@ -1,12 +1,13 @@
-N = int(input("Введіть число N (1<N<9): "))
-while N <= 1 or N >= 9:
-    N = int(input("Неправильне число, введіть ще раз: "))
-for i in range(1, N + 1):
-    num = N
-    for j in range(N, 0, -1):
-        if j >= i:
-            print(num, end="")
-            num -= 1
-        else:
-            break
-    print("")
+a = int(input("Введіть a: "))
+while (a < 1 or a > 100):
+    a = int(input("Введіть a (від 1 до 100): "))
+b = int(input("Введіть b: "))
+while (b < 1 or b > 100):
+    b = int(input("Введіть b (від 1 до 100): "))
+if a > b:
+    r = a / b + 1
+elif a == b:
+    r = -2
+else:
+    r = (a - b) / a
+print("Результат обчислення виразу: ", r)
