@@ -1,0 +1,15 @@
+import math
+from mod import series_sum
+# 1) Перша функція для обчислення z
+def expression(a, b):
+    if a >= 15:
+        z = math.sin(a) + math.cos(b)
+    else:
+        z = 1 / math.sqrt(a + b**2)
+    return z
+# --- Основна програма ---
+a = float(input("Введіть значення a: "))
+b = float(input("Введіть значення b: "))
+print("Значення виразу z = ", round(expression(a, b), 4))
+n = int(input("Введіть значення n для суми ряду: "))
+print("Сума ряду = ", round(series_sum(n), 4))
