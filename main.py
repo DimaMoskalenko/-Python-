@@ -1,78 +1,79 @@
-import json
-# Початкові дані учнів (10 учнів, 5 предметів)
-students = [
-    {"Surname": "Іваненко", "Grades": [8, 9, 10, 7, 9]},
-    {"Surname": "Петренко", "Grades": [7, 6, 8, 7, 7]},
-    {"Surname": "Шевченко", "Grades": [10, 9, 11, 10, 12]},
-    {"Surname": "Бондар", "Grades": [5, 7, 6, 7, 6]},
-    {"Surname": "Сидоренко", "Grades": [9, 9, 8, 10, 9]},
-    {"Surname": "Коваль", "Grades": [11, 11, 10, 12, 10]},
-    {"Surname": "Мельник", "Grades": [6, 7, 8, 6, 7]},
-    {"Surname": "Ткаченко", "Grades": [9, 8, 9, 10, 7]},
-    {"Surname": "Лисенко", "Grades": [10, 10, 9, 11, 10]},
-    {"Surname": "Олійник", "Grades": [7, 8, 7, 8, 7]}
-]
-# Імена файлів
-FILE_NAME = "grades.json"
-RESULT_FILE = "result.json"
-# Запис початкових даних у JSON
-with open(FILE_NAME, "w", encoding="utf-8") as f:
-    json.dump(students, f, ensure_ascii=False, indent=4)
-# Функції для роботи з JSON
-def load_data():
-    with open(FILE_NAME, "r", encoding="utf-8") as f:
-        return json.load(f)
-def save_data(data):
-    with open(FILE_NAME, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-# 1. Переглянути всіх учнів
-def view_students():
-    data = load_data()
-    print("\n--- Учні та їхні оцінки ---")
-    for s in data:
-        print(f"{s['Surname']}: {s['Grades']}")
-    print()
-# 2. Додати учня
-def add_student():
-    data = load_data()
-    surname = input("Прізвище учня: ")
-    grades_input = input("Введіть 5 оцінок через пробіл: ")
-    grades = list(map(int, grades_input.split()))
-    if len(grades) != 5:
-        print("❌ Помилка: потрібно ввести 5 оцінок!")
-        return
-    data.append({"Surname": surname, "Grades": grades})
-    save_data(data)
-    print("✅ Учня додано!\n")
-# 3. Розрахунок середніх оцінок
-def calculate_average():
-    data = load_data()
-    # середня кожного учня
-    for s in data:
-        s["Average"] = sum(s["Grades"]) / len(s["Grades"])
-    # середня класу
-    class_avg = sum(s["Average"] for s in data) / len(data)
-    print(f"\nСередня оцінка класу: {class_avg:.2f}")
-    # учні з середньою вище класної
-    above_avg = [s["Surname"] for s in data if s["Average"] > class_avg]
-    print("Учні з оцінками вище середньої класу:")
-    for s in above_avg:
-        print(" -", s)
-    # запис у файл
-    with open(RESULT_FILE, "w", encoding="utf-8") as f:
-        json.dump({"ClassAverage": class_avg, "AboveAverage": above_avg}, f, ensure_ascii=False, indent=4)
-    print("\n✅ Результат збережено у result.json\n")
-# Меню
-while True:
-    print("Меню:\n 1 - Переглянути всіх учнів\n 2 - Додати учня\n 3 - Розрахувати середні оцінки\n 4 - Вихід")
-    choice = input("Ваш вибір: ")
-    if choice == "1":
-        view_students()
-    elif choice == "2":
-        add_student()
-    elif choice == "3":
-        calculate_average()
-    elif choice == "4":
-        break
+import wbdata
+import pandas as pd
+import sys
+# ---- Параметри ----
+start_year = 2018
+end_year = 2019
+indicator_code = "NE.EXP.GNFS.ZS"
+input_filename = "exports_2018_2019.csv"
+output_filename = "search_results.csv"
+def download_data():
+    print("Завантаження даних World Bank через wbdata...")
+    indicator = {indicator_code: "Exports % GDP"}
+    try:
+        # Отримуємо всі дані без convert_date
+        df = wbdata.get_dataframe(indicator, country="all")
+        if df.empty:
+            print("❌ Дані не знайдено. Перевірте індикатор.")
+            sys.exit(1)
+        # Робимо reset_index для country та date
+        df = df.reset_index()
+        # Конвертуємо date у datetime
+        df['date'] = pd.to_datetime(df['date'], errors='coerce')
+        # Видаляємо рядки з неконвертованими датами
+        df = df.dropna(subset=['date'])
+        # Фільтруємо роки 2018 та 2019
+        df['year'] = df['date'].dt.year
+        df = df[df['year'].isin([start_year, end_year])]
+        return df
+    except Exception as e:
+        print("❌ Помилка при завантаженні даних:", e)
+        sys.exit(1)
+def prepare_csv(df):
+    # Повертаємо країни як індекс і роки як стовпці
+    df_pivot = df.pivot(index="country", columns="year", values="Exports % GDP")
+    df_pivot.index.name = "Country"
+    return df_pivot
+def save_csv(df, filename):
+    try:
+        df.to_csv(filename, encoding="utf-8")
+        print(f"✅ CSV збережено у '{filename}'")
+    except Exception as e:
+        print("❌ Помилка при збереженні CSV:", e)
+        sys.exit(1)
+def print_csv_head(df, n=20):
+    print(f"\n--- Перші {n} рядків CSV ---")
+    print(df.head(n))
+    print("--- кінець виводу ---\n")
+def search_countries(df, queries):
+    queries_lower = [q.strip().lower() for q in queries if q.strip()]
+    if not queries_lower:
+        return pd.DataFrame(columns=df.columns)
+    mask = df.index.to_series().apply(lambda x: any(q in x.lower() for q in queries_lower))
+    return df[mask]
+def main():
+    df_raw = download_data()
+    df_csv = prepare_csv(df_raw)
+    save_csv(df_csv, input_filename)
+    print_csv_head(df_csv, n=20)
+    # Ввід користувача
+    print("Введіть назви країн для пошуку (через кому), приклад: Ukraine, Poland, United States")
+    user_input = input("Країни: ")
+    queries = [q.strip() for q in user_input.split(",")]
+    df_search = search_countries(df_csv, queries)
+    # Збереження результатів
+    try:
+        df_search.to_csv(output_filename, encoding="utf-8")
+        print(f"✅ Результати пошуку збережено у '{output_filename}'. Знайдено рядків: {len(df_search)}")
+    except Exception as e:
+        print("❌ Помилка при записі результатів:", e)
+        sys.exit(1)
+    # Вивід результатів пошуку
+    if not df_search.empty:
+        print("\n--- Результати пошуку ---")
+        print(df_search)
+        print("--- кінець результатів ---")
     else:
-        print("❌ Помилка: такої опції нема\n")
+        print("⚠️ Не знайдено жодної країни за введеними назвами.")
+if __name__ == "__main__":
+    main()
