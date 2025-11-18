@@ -1,52 +1,78 @@
-def Open(file_name, mode):
-    try:
-        file = open(file_name, mode, encoding="utf-8")
-    except:
-        print("File", file_name, "wasn't opened!")
-        return None
-    else:
-        print("File", file_name, "was opened!")
-        return file
+import json
+# Початкові дані учнів (10 учнів, 5 предметів)
+students = [
+    {"Surname": "Іваненко", "Grades": [8, 9, 10, 7, 9]},
+    {"Surname": "Петренко", "Grades": [7, 6, 8, 7, 7]},
+    {"Surname": "Шевченко", "Grades": [10, 9, 11, 10, 12]},
+    {"Surname": "Бондар", "Grades": [5, 7, 6, 7, 6]},
+    {"Surname": "Сидоренко", "Grades": [9, 9, 8, 10, 9]},
+    {"Surname": "Коваль", "Grades": [11, 11, 10, 12, 10]},
+    {"Surname": "Мельник", "Grades": [6, 7, 8, 6, 7]},
+    {"Surname": "Ткаченко", "Grades": [9, 8, 9, 10, 7]},
+    {"Surname": "Лисенко", "Grades": [10, 10, 9, 11, 10]},
+    {"Surname": "Олійник", "Grades": [7, 8, 7, 8, 7]}
+]
 # Імена файлів
-file1_name = "TF17_1.txt"
-file2_name = "TF17_2.txt"
-file3_name = "TF17_3.txt"
-# Створення TF17_1 з рядками різної довжини
-file_1_w = Open(file1_name, "w")
-if file_1_w != None:
-    file_1_w.write("abc123\n456defgh\nijk7890lmn\n!@#12")
-    print("Information was successfully added to TF17_1.txt!")
-    file_1_w.close()
-    print("File TF17_1.txt was closed!")
-# Читання TF17_1 і обробка → TF17_3
-file_1_r = Open(file1_name, "r")
-file_3_w = Open(file3_name, "w")
-if file_1_r != None and file_3_w != None:
-    content = file_1_r.read()
-    digits = ''.join([c for c in content if c.isdigit()])
-    others = ''.join([c for c in content if not c.isdigit() and c != '\n'])
-    file_3_w.write(digits + '\n' + others)
-    file_1_r.close()
-    file_3_w.close()
-    print("TF17_3.txt was created!")
-# Читання TF17_3 і запис у TF17_2 по 10 символів
-file_3_r = Open(file3_name, "r")
-file_2_w = Open(file2_name, "w")
-if file_3_r != None and file_2_w != None:
-    data = file_3_r.read().split('\n')
-    digits_part = data[0]
-    others_part = data[1]
-    file_2_w.write(digits_part + '\n')
-    for i in range(0, len(others_part), 10):
-        file_2_w.write(others_part[i:i+10] + '\n')
-    file_3_r.close()
-    file_2_w.close()
-    print("TF17_2.txt was created!")
-# Виведення TF17_2 по рядках
-print("Final content of TF17_2:")
-file_2_r = Open(file2_name, "r")
-if file_2_r != None:
-    for line in file_2_r:
-        print(line.strip())
-    file_2_r.close()
-    print("File TF17_2.txt was closed!")
+FILE_NAME = "grades.json"
+RESULT_FILE = "result.json"
+# Запис початкових даних у JSON
+with open(FILE_NAME, "w", encoding="utf-8") as f:
+    json.dump(students, f, ensure_ascii=False, indent=4)
+# Функції для роботи з JSON
+def load_data():
+    with open(FILE_NAME, "r", encoding="utf-8") as f:
+        return json.load(f)
+def save_data(data):
+    with open(FILE_NAME, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+# 1. Переглянути всіх учнів
+def view_students():
+    data = load_data()
+    print("\n--- Учні та їхні оцінки ---")
+    for s in data:
+        print(f"{s['Surname']}: {s['Grades']}")
+    print()
+# 2. Додати учня
+def add_student():
+    data = load_data()
+    surname = input("Прізвище учня: ")
+    grades_input = input("Введіть 5 оцінок через пробіл: ")
+    grades = list(map(int, grades_input.split()))
+    if len(grades) != 5:
+        print("❌ Помилка: потрібно ввести 5 оцінок!")
+        return
+    data.append({"Surname": surname, "Grades": grades})
+    save_data(data)
+    print("✅ Учня додано!\n")
+# 3. Розрахунок середніх оцінок
+def calculate_average():
+    data = load_data()
+    # середня кожного учня
+    for s in data:
+        s["Average"] = sum(s["Grades"]) / len(s["Grades"])
+    # середня класу
+    class_avg = sum(s["Average"] for s in data) / len(data)
+    print(f"\nСередня оцінка класу: {class_avg:.2f}")
+    # учні з середньою вище класної
+    above_avg = [s["Surname"] for s in data if s["Average"] > class_avg]
+    print("Учні з оцінками вище середньої класу:")
+    for s in above_avg:
+        print(" -", s)
+    # запис у файл
+    with open(RESULT_FILE, "w", encoding="utf-8") as f:
+        json.dump({"ClassAverage": class_avg, "AboveAverage": above_avg}, f, ensure_ascii=False, indent=4)
+    print("\n✅ Результат збережено у result.json\n")
+# Меню
+while True:
+    print("Меню:\n 1 - Переглянути всіх учнів\n 2 - Додати учня\n 3 - Розрахувати середні оцінки\n 4 - Вихід")
+    choice = input("Ваш вибір: ")
+    if choice == "1":
+        view_students()
+    elif choice == "2":
+        add_student()
+    elif choice == "3":
+        calculate_average()
+    elif choice == "4":
+        break
+    else:
+        print("❌ Помилка: такої опції нема\n")
